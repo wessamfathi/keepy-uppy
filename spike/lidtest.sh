@@ -1,15 +1,21 @@
 #!/bin/sh
-# usage: sh lidtest.sh arm|disarm
+# usage: sh lidtest.sh arm|disarm|hold   (hold = keep re-arming every 1s until Ctrl-C)
 # Sets state, logs a heartbeat every 5s, then on Ctrl-C reports gaps + sleep events.
 set -eu
-mode=${1:?usage: sh lidtest.sh arm|disarm}
+mode=${1:?usage: sh lidtest.sh arm|disarm|hold}
 dir=$(cd "$(dirname "$0")" && pwd)
 log=$dir/heartbeat.log
-"$dir/target/debug/ku-spike" "$mode"
+holder=
+if [ "$mode" = hold ]; then
+  "$dir/target/debug/ku-spike" hold & holder=$!
+else
+  "$dir/target/debug/ku-spike" "$mode"
+fi
 : > "$log"
 start=$(date '+%Y-%m-%d %H:%M:%S')
 echo "[$mode] heartbeat -> $log. Close lid >= 60s, reopen, then Ctrl-C."
 report() {
+  if [ -n "$holder" ]; then kill -TERM "$holder"; wait "$holder" || true; fi
   echo "--- heartbeat gaps > 10s ---"
   awk 'NR>1 && $1-prev>10 {printf "gap %ds ending epoch %d\n", $1-prev, $1} {prev=$1}' "$log"
   echo "--- sleep/wake/display events since $start ---"

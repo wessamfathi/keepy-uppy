@@ -1,10 +1,12 @@
 //! Throwaway spike: toggle IOPMrootDomain clamshell-sleep-disable without root.
 //!
 //! usage: ku-spike arm | disarm | hold
-//!   hold = arm, wait for Ctrl-C, then disarm.
+//!   hold = arm, re-arm every second (powerd can clear the bit), disarm on Ctrl-C/TERM.
 
 use std::ffi::{c_char, c_void};
 use std::process::ExitCode;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 type KernReturn = i32;
 type MachPort = u32;
@@ -39,7 +41,6 @@ extern "C" {
 extern "C" {
     static mach_task_self_: MachPort;
     fn signal(sig: i32, handler: extern "C" fn(i32)) -> usize;
-    fn pause() -> i32;
 }
 
 fn set_clamshell_sleep_disabled(disabled: bool) -> Result<(), String> {
@@ -72,22 +73,33 @@ fn set_clamshell_sleep_disabled(disabled: bool) -> Result<(), String> {
     Ok(())
 }
 
-extern "C" fn on_signal(_: i32) {}
+static STOP: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn on_signal(_: i32) {
+    STOP.store(true, Ordering::SeqCst);
+}
 
 fn main() -> ExitCode {
     let cmd = std::env::args().nth(1).unwrap_or_default();
     let result = match cmd.as_str() {
         "arm" => set_clamshell_sleep_disabled(true),
         "disarm" => set_clamshell_sleep_disabled(false),
-        "hold" => set_clamshell_sleep_disabled(true).and_then(|()| {
-            println!("armed; Ctrl-C to disarm");
+        "hold" => {
             unsafe {
                 signal(2, on_signal);
                 signal(15, on_signal);
-                pause();
             }
-            set_clamshell_sleep_disabled(false)
-        }),
+            println!("holding armed (re-arm every 1s); Ctrl-C to disarm");
+            let mut result = Ok(());
+            while !STOP.load(Ordering::SeqCst) {
+                if let Err(e) = set_clamshell_sleep_disabled(true) {
+                    result = Err(e);
+                    break;
+                }
+                std::thread::sleep(Duration::from_secs(1));
+            }
+            result.and(set_clamshell_sleep_disabled(false))
+        }
         _ => {
             eprintln!("usage: ku-spike arm | disarm | hold");
             return ExitCode::from(2);
