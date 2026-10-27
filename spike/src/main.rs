@@ -18,7 +18,12 @@ const K_PM_SET_CLAMSHELL_SLEEP_STATE: u32 = 12;
 extern "C" {
     fn IOServiceMatching(name: *const c_char) -> *mut c_void;
     fn IOServiceGetMatchingService(main_port: MachPort, matching: *mut c_void) -> IoObject;
-    fn IOServiceOpen(service: IoObject, owning_task: MachPort, kind: u32, connect: *mut IoConnect) -> KernReturn;
+    fn IOServiceOpen(
+        service: IoObject,
+        owning_task: MachPort,
+        kind: u32,
+        connect: *mut IoConnect,
+    ) -> KernReturn;
     fn IOServiceClose(connect: IoConnect) -> KernReturn;
     fn IOObjectRelease(object: IoObject) -> KernReturn;
     fn IOConnectCallScalarMethod(
