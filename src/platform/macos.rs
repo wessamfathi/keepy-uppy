@@ -11,6 +11,7 @@ use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
 use core_foundation::number::CFNumber;
 use core_foundation::string::{CFString, CFStringRef};
 use objc2_foundation::{NSProcessInfo, NSProcessInfoThermalState};
+use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
 use super::SleepController;
 use crate::policy::{Power, Thermal};
@@ -190,6 +191,29 @@ pub fn thermal() -> Thermal {
         NSProcessInfoThermalState::Serious => Thermal::Serious,
         _ => Thermal::Critical,
     }
+}
+
+/// Registered as a login item (possibly still awaiting approval in System Settings).
+pub fn launch_at_login() -> bool {
+    let status = unsafe { SMAppService::mainAppService().status() };
+    status == SMAppServiceStatus::Enabled || status == SMAppServiceStatus::RequiresApproval
+}
+
+/// Only works from a bundled `.app` (scripts/bundle.sh), not `cargo run`.
+pub fn set_launch_at_login(on: bool) -> Result<(), String> {
+    let service = unsafe { SMAppService::mainAppService() };
+    let result = unsafe {
+        if on {
+            service.registerAndReturnError()
+        } else {
+            service.unregisterAndReturnError()
+        }
+    };
+    result.map_err(|e| format!("login item: {}", e.localizedDescription()))?;
+    if unsafe { service.status() } == SMAppServiceStatus::RequiresApproval {
+        unsafe { SMAppService::openSystemSettingsLoginItems() };
+    }
+    Ok(())
 }
 
 /// `~/Library/Application Support/keepy-uppy`.

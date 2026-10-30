@@ -15,6 +15,7 @@ pub enum Action {
     Disarm,
     LowBattery(Option<u8>),
     ToggleChime,
+    ToggleLaunchAtLogin,
     Quit,
 }
 
@@ -28,6 +29,7 @@ pub struct View<'a> {
     pub last_reason: Reason,
     pub low_battery: Option<u8>,
     pub chime_muted: bool,
+    pub launch_at_login: bool,
     pub error: Option<&'a str>,
 }
 
@@ -41,6 +43,7 @@ pub struct Tray {
     disarm: MenuItem,
     low_battery: Vec<(Option<u8>, CheckMenuItem)>,
     chime: CheckMenuItem,
+    launch_at_login: CheckMenuItem,
     quit: MenuItem,
 }
 
@@ -72,6 +75,7 @@ impl Tray {
             false,
             None,
         );
+        let launch_at_login = CheckMenuItem::new("Launch at login", true, false, None);
         let quit = MenuItem::new("Quit keepy-uppy", true, None);
 
         let menu = Menu::new();
@@ -85,6 +89,7 @@ impl Tray {
             &PredefinedMenuItem::separator(),
             &low_battery_menu,
             &chime,
+            &launch_at_login,
             &PredefinedMenuItem::separator(),
             &quit,
         ])
@@ -107,6 +112,7 @@ impl Tray {
             disarm,
             low_battery,
             chime,
+            launch_at_login,
             quit,
         })
     }
@@ -122,6 +128,8 @@ impl Tray {
             Some(Action::Disarm)
         } else if id == self.chime.id() {
             Some(Action::ToggleChime)
+        } else if id == self.launch_at_login.id() {
+            Some(Action::ToggleLaunchAtLogin)
         } else if id == self.quit.id() {
             Some(Action::Quit)
         } else {
@@ -146,6 +154,7 @@ impl Tray {
             item.set_checked(*c == v.low_battery);
         }
         self.chime.set_checked(v.chime_muted);
+        self.launch_at_login.set_checked(v.launch_at_login);
 
         if self.shown_armed != Some(v.armed) {
             let _ = self.icon.set_icon_templated(Some(icon(v.armed)));

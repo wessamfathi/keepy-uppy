@@ -31,6 +31,7 @@ struct App {
     last_reason: Reason,
     config: Config,
     chime_muted: bool,
+    launch_at_login: bool,
     error: Option<String>,
 }
 
@@ -94,6 +95,12 @@ impl App {
                 }
                 self.chime_muted = platform::chime_muted();
             }
+            Action::ToggleLaunchAtLogin => {
+                if let Err(e) = platform::set_launch_at_login(!self.launch_at_login) {
+                    self.error = Some(e);
+                }
+                self.launch_at_login = platform::launch_at_login();
+            }
             Action::Quit => unreachable!("handled by the event loop"),
         }
     }
@@ -115,6 +122,7 @@ impl App {
             last_reason: self.last_reason,
             low_battery: self.config.low_battery(),
             chime_muted: self.chime_muted,
+            launch_at_login: self.launch_at_login,
             error: self.error.as_deref(),
         }
     }
@@ -139,6 +147,7 @@ fn main() {
         last_reason: Reason::Off,
         config: Config::load(),
         chime_muted: platform::chime_muted(),
+        launch_at_login: platform::launch_at_login(),
         error: None,
     };
 
