@@ -6,6 +6,7 @@ use tray_icon::menu::{CheckMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem,
 use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 
 use crate::policy::{Reason, Session};
+use crate::update::UpdateState;
 
 pub const LOW_BATTERY_CHOICES: [Option<u8>; 4] = [Some(10), Some(20), Some(30), None];
 
@@ -16,6 +17,7 @@ pub enum Action {
     LowBattery(Option<u8>),
     ToggleChime,
     ToggleLaunchAtLogin,
+    CheckForUpdates,
     Quit,
 }
 
@@ -30,6 +32,7 @@ pub struct View<'a> {
     pub low_battery: Option<u8>,
     pub chime_muted: bool,
     pub launch_at_login: bool,
+    pub update: &'a UpdateState,
     pub error: Option<&'a str>,
 }
 
@@ -44,6 +47,7 @@ pub struct Tray {
     low_battery: Vec<(Option<u8>, CheckMenuItem)>,
     chime: CheckMenuItem,
     launch_at_login: CheckMenuItem,
+    update: MenuItem,
     quit: MenuItem,
 }
 
@@ -76,6 +80,7 @@ impl Tray {
             None,
         );
         let launch_at_login = CheckMenuItem::new("Launch at login", true, false, None);
+        let update = MenuItem::new("", true, None);
         let quit = MenuItem::new("Quit keepy-uppy", true, None);
 
         let menu = Menu::new();
@@ -91,6 +96,7 @@ impl Tray {
             &chime,
             &launch_at_login,
             &PredefinedMenuItem::separator(),
+            &update,
             &quit,
         ])
         .map_err(|e| e.to_string())?;
@@ -113,6 +119,7 @@ impl Tray {
             low_battery,
             chime,
             launch_at_login,
+            update,
             quit,
         })
     }
@@ -130,6 +137,8 @@ impl Tray {
             Some(Action::ToggleChime)
         } else if id == self.launch_at_login.id() {
             Some(Action::ToggleLaunchAtLogin)
+        } else if id == self.update.id() {
+            Some(Action::CheckForUpdates)
         } else if id == self.quit.id() {
             Some(Action::Quit)
         } else {
@@ -155,6 +164,14 @@ impl Tray {
         }
         self.chime.set_checked(v.chime_muted);
         self.launch_at_login.set_checked(v.launch_at_login);
+        self.update.set_text(match v.update {
+            UpdateState::Idle => "Check for updates…".into(),
+            UpdateState::Checking => "Checking for updates…".into(),
+            UpdateState::UpToDate => "Up to date · check again".into(),
+            UpdateState::Available(tag) => format!("Download keepy-uppy {tag}…"),
+            UpdateState::Failed => "Couldn't check for updates · try again".into(),
+        });
+        self.update.set_enabled(*v.update != UpdateState::Checking);
 
         if self.shown_armed != Some(v.armed) {
             let _ = self.icon.set_icon_templated(Some(icon(v.armed)));

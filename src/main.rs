@@ -4,6 +4,7 @@ mod config;
 mod platform;
 mod policy;
 mod tray;
+mod update;
 
 use std::time::{Duration, Instant};
 
@@ -16,12 +17,14 @@ use config::Config;
 use platform::{Controller, SleepController};
 use policy::{Decision, Inputs, Reason, Session};
 use tray::{Action, Tray, View};
+use update::UpdateState;
 
 /// powerd can clear our bit at any time (docs/mechanism.md), so re-arm this often.
 const TICK: Duration = Duration::from_secs(1);
 
 enum UserEvent {
     Menu(MenuEvent),
+    Update(Result<Option<String>, String>),
 }
 
 struct App {
@@ -32,6 +35,7 @@ struct App {
     config: Config,
     chime_muted: bool,
     launch_at_login: bool,
+    update: UpdateState,
     error: Option<String>,
 }
 
@@ -101,7 +105,7 @@ impl App {
                 }
                 self.launch_at_login = platform::launch_at_login();
             }
-            Action::Quit => unreachable!("handled by the event loop"),
+            Action::CheckForUpdates | Action::Quit => unreachable!("handled by the event loop"),
         }
     }
 
@@ -123,6 +127,7 @@ impl App {
             low_battery: self.config.low_battery(),
             chime_muted: self.chime_muted,
             launch_at_login: self.launch_at_login,
+            update: &self.update,
             error: self.error.as_deref(),
         }
     }
@@ -148,14 +153,16 @@ fn main() {
         config: Config::load(),
         chime_muted: platform::chime_muted(),
         launch_at_login: platform::launch_at_login(),
+        update: UpdateState::Idle,
         error: None,
     };
 
     let mut event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     event_loop.set_activation_policy(ActivationPolicy::Accessory);
     let proxy = event_loop.create_proxy();
+    let menu_proxy = proxy.clone();
     MenuEvent::set_event_handler(Some(move |e| {
-        let _ = proxy.send_event(UserEvent::Menu(e));
+        let _ = menu_proxy.send_event(UserEvent::Menu(e));
     }));
 
     let mut tray: Option<Tray> = None;
@@ -191,9 +198,32 @@ fn main() {
                         *control_flow = ControlFlow::Exit;
                         return;
                     }
+                    Some(Action::CheckForUpdates) => {
+                        if let UpdateState::Available(tag) = &app.update {
+                            if let Err(e) = platform::open_url(&update::release_page(tag)) {
+                                app.error = Some(e);
+                            }
+                        } else {
+                            app.update = UpdateState::Checking;
+                            let proxy = proxy.clone();
+                            std::thread::spawn(move || {
+                                let _ = proxy.send_event(UserEvent::Update(update::check()));
+                            });
+                        }
+                    }
                     Some(action) => app.handle(action, now),
                     None => return,
                 }
+            }
+            Event::UserEvent(UserEvent::Update(result)) => {
+                app.update = match result {
+                    Ok(Some(tag)) => UpdateState::Available(tag),
+                    Ok(None) => UpdateState::UpToDate,
+                    Err(e) => {
+                        eprintln!("keepy-uppy: {e}");
+                        UpdateState::Failed
+                    }
+                };
             }
             _ => {
                 *control_flow = ControlFlow::WaitUntil(next_tick);

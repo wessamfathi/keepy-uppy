@@ -216,6 +216,14 @@ pub fn set_launch_at_login(on: bool) -> Result<(), String> {
     Ok(())
 }
 
+pub fn open_url(url: &str) -> Result<(), String> {
+    Command::new("/usr/bin/open")
+        .arg(url)
+        .status()
+        .map_err(|e| format!("open: {e}"))
+        .map(|_| ())
+}
+
 /// `~/Library/Application Support/keepy-uppy`.
 pub fn config_dir() -> Option<PathBuf> {
     let home = std::env::var_os("HOME")?;
