@@ -1,0 +1,12 @@
+[package]
+name = "keepy-uppy"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "Keep a MacBook awake with the lid closed"
+exclude = ["spike"]
+
+[dependencies]
+tray-icon = "=0.26.1"
+tao = "=0.37.1"
+core-foundation = "=0.10.1"
