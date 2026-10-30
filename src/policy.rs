@@ -11,7 +11,6 @@ pub enum Session {
 }
 
 /// Mirrors `NSProcessInfoThermalState`.
-#[allow(dead_code)] // TODO: read from NSProcessInfo (plan step 3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Thermal {
     Nominal,

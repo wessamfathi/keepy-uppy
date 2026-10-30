@@ -1,5 +1,6 @@
 //! keepy-uppy: keep a MacBook awake with the lid closed.
 
+mod config;
 mod platform;
 mod policy;
 mod tray;
@@ -11,13 +12,13 @@ use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tao::platform::macos::{ActivationPolicy, EventLoopExtMacOS};
 use tray_icon::menu::MenuEvent;
 
+use config::Config;
 use platform::{Controller, SleepController};
-use policy::{Decision, Inputs, Reason, Session, Thermal};
+use policy::{Decision, Inputs, Reason, Session};
 use tray::{Action, Tray, View};
 
 /// powerd can clear our bit at any time (docs/mechanism.md), so re-arm this often.
 const TICK: Duration = Duration::from_secs(1);
-const DEFAULT_LOW_BATTERY: Option<u8> = Some(10);
 
 enum UserEvent {
     Menu(MenuEvent),
@@ -28,7 +29,7 @@ struct App {
     session: Session,
     timer_hours: Option<u64>,
     last_reason: Reason,
-    low_battery: Option<u8>,
+    config: Config,
     chime_muted: bool,
     error: Option<String>,
 }
@@ -41,8 +42,8 @@ impl App {
             session: self.session,
             now,
             power: platform::power(),
-            low_battery: self.low_battery,
-            thermal: Thermal::Nominal,
+            low_battery: self.config.low_battery(),
+            thermal: platform::thermal(),
         });
         let result = match decision {
             Decision::Arm => self.controller.arm(),
@@ -81,7 +82,12 @@ impl App {
                 self.session = Session::Off;
                 self.last_reason = Reason::Off;
             }
-            Action::LowBattery(limit) => self.low_battery = limit,
+            Action::LowBattery(limit) => {
+                self.config.set_low_battery(limit);
+                if let Err(e) = self.config.save() {
+                    self.error = Some(e);
+                }
+            }
             Action::ToggleChime => {
                 if let Err(e) = platform::set_chime_muted(!self.chime_muted) {
                     self.error = Some(e);
@@ -92,6 +98,14 @@ impl App {
         }
     }
 
+    fn quit(&mut self) {
+        if self.controller.is_armed() {
+            if let Err(e) = self.controller.disarm() {
+                eprintln!("keepy-uppy: {e}");
+            }
+        }
+    }
+
     fn view(&self, now: Instant) -> View<'_> {
         View {
             session: self.session,
@@ -99,7 +113,7 @@ impl App {
             armed: self.controller.is_armed(),
             now,
             last_reason: self.last_reason,
-            low_battery: self.low_battery,
+            low_battery: self.config.low_battery(),
             chime_muted: self.chime_muted,
             error: self.error.as_deref(),
         }
@@ -123,7 +137,7 @@ fn main() {
         session: Session::Off,
         timer_hours: None,
         last_reason: Reason::Off,
-        low_battery: DEFAULT_LOW_BATTERY,
+        config: Config::load(),
         chime_muted: platform::chime_muted(),
         error: None,
     };
@@ -140,21 +154,30 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         let now = Instant::now();
         match event {
-            Event::NewEvents(StartCause::Init) => match Tray::new() {
-                Ok(t) => tray = Some(t),
-                Err(e) => {
-                    eprintln!("keepy-uppy: tray: {e}");
+            Event::NewEvents(StartCause::Init) => {
+                // AppKit resets SIGTERM while launching, so install once running.
+                platform::install_stop_signals();
+                match Tray::new() {
+                    Ok(t) => tray = Some(t),
+                    Err(e) => {
+                        eprintln!("keepy-uppy: tray: {e}");
+                        *control_flow = ControlFlow::Exit;
+                        return;
+                    }
+                }
+            }
+            Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
+                if platform::stop_requested() {
+                    app.quit();
+                    tray = None;
                     *control_flow = ControlFlow::Exit;
                     return;
                 }
-            },
-            Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {}
+            }
             Event::UserEvent(UserEvent::Menu(e)) => {
                 match tray.as_ref().and_then(|t| t.action(&e.id)) {
                     Some(Action::Quit) => {
-                        if app.controller.is_armed() {
-                            let _ = app.controller.disarm();
-                        }
+                        app.quit();
                         tray = None;
                         *control_flow = ControlFlow::Exit;
                         return;

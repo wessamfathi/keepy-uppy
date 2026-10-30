@@ -1,16 +1,19 @@
 //! macOS backend. See docs/mechanism.md for why each piece exists.
 
 use std::ffi::{c_char, c_void};
+use std::path::PathBuf;
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use core_foundation::array::{CFArray, CFArrayRef};
 use core_foundation::base::{CFType, CFTypeRef, TCFType};
 use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
 use core_foundation::number::CFNumber;
 use core_foundation::string::{CFString, CFStringRef};
+use objc2_foundation::{NSProcessInfo, NSProcessInfoThermalState};
 
 use super::SleepController;
-use crate::policy::Power;
+use crate::policy::{Power, Thermal};
 
 type KernReturn = i32;
 type MachPort = u32;
@@ -50,6 +53,29 @@ extern "C" {
 
 extern "C" {
     static mach_task_self_: MachPort;
+    fn signal(sig: i32, handler: extern "C" fn(i32)) -> usize;
+}
+
+const SIGINT: i32 = 2;
+const SIGTERM: i32 = 15;
+
+static STOP: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn on_stop_signal(_: i32) {
+    // Only an atomic store here; the event loop disarms on its next tick.
+    STOP.store(true, Ordering::SeqCst);
+}
+
+/// SIGINT/SIGTERM (Ctrl-C, `kill`, logout) request a clean disarm and exit.
+pub fn install_stop_signals() {
+    unsafe {
+        signal(SIGINT, on_stop_signal);
+        signal(SIGTERM, on_stop_signal);
+    }
+}
+
+pub fn stop_requested() -> bool {
+    STOP.load(Ordering::SeqCst)
 }
 
 /// Holds an `IOPMrootDomain` user-client connection for the app's lifetime.
@@ -155,6 +181,21 @@ pub fn power() -> Power {
         }
         Power { on_ac, battery_pct }
     }
+}
+
+pub fn thermal() -> Thermal {
+    match NSProcessInfo::processInfo().thermalState() {
+        NSProcessInfoThermalState::Nominal => Thermal::Nominal,
+        NSProcessInfoThermalState::Fair => Thermal::Fair,
+        NSProcessInfoThermalState::Serious => Thermal::Serious,
+        _ => Thermal::Critical,
+    }
+}
+
+/// `~/Library/Application Support/keepy-uppy`.
+pub fn config_dir() -> Option<PathBuf> {
+    let home = std::env::var_os("HOME")?;
+    Some(PathBuf::from(home).join("Library/Application Support/keepy-uppy"))
 }
 
 const CHIME_DOMAIN: &str = "com.apple.PowerChime";

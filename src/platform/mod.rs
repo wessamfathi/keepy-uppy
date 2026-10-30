@@ -7,7 +7,10 @@ compile_error!("keepy-uppy only supports macOS for now");
 mod macos;
 
 #[cfg(target_os = "macos")]
-pub use macos::{chime_muted, power, set_chime_muted, ClamshellController as Controller};
+pub use macos::{
+    chime_muted, config_dir, install_stop_signals, power, set_chime_muted, stop_requested, thermal,
+    ClamshellController as Controller,
+};
 
 pub trait SleepController {
     /// Stop lid close from sleeping the machine. Safe to call repeatedly.
