@@ -53,7 +53,7 @@ Consequences for the app:
 | Low-battery choice | saved to `config.toml` |
 | Watchdog: pipe EOF after `1` | disarms |
 | Watchdog killed | app respawns it next tick |
-| `kill -9` app while armed, close lid | TODO: should sleep (watchdog disarms) |
+| `kill -9` app while armed, close lid | sleeps after 5 s (watchdog disarmed; 2026-11-01) |
 
 ## Verifying
 - Trust `pmset -g log` ("Entering Sleep state due to 'Clamshell Sleep'") and
