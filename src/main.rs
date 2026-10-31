@@ -5,6 +5,7 @@ mod platform;
 mod policy;
 mod tray;
 mod update;
+mod watchdog;
 
 use std::time::{Duration, Instant};
 
@@ -18,6 +19,7 @@ use platform::{Controller, SleepController};
 use policy::{Decision, Inputs, Reason, Session};
 use tray::{Action, Tray, View};
 use update::UpdateState;
+use watchdog::Watchdog;
 
 /// powerd can clear our bit at any time (docs/mechanism.md), so re-arm this often.
 const TICK: Duration = Duration::from_secs(1);
@@ -29,6 +31,7 @@ enum UserEvent {
 
 struct App {
     controller: Controller,
+    watchdog: Watchdog,
     session: Session,
     timer_hours: Option<u64>,
     last_reason: Reason,
@@ -71,6 +74,7 @@ impl App {
             self.session = Session::Off;
             self.error = Some(e);
         }
+        self.watchdog.report(self.controller.is_armed());
     }
 
     fn handle(&mut self, action: Action, now: Instant) {
@@ -115,6 +119,7 @@ impl App {
                 eprintln!("keepy-uppy: {e}");
             }
         }
+        self.watchdog.report(self.controller.is_armed());
     }
 
     fn view(&self, now: Instant) -> View<'_> {
@@ -134,6 +139,9 @@ impl App {
 }
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some(watchdog::ARG) {
+        watchdog::run();
+    }
     let mut controller = match Controller::new() {
         Ok(c) => c,
         Err(e) => {
@@ -147,6 +155,7 @@ fn main() {
     }
     let mut app = App {
         controller,
+        watchdog: Watchdog::start(),
         session: Session::Off,
         timer_hours: None,
         last_reason: Reason::Off,

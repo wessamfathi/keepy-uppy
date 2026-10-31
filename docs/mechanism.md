@@ -51,6 +51,9 @@ Consequences for the app:
 | Ctrl-C while armed, close lid | sleeps (user-verified; app exits 0) |
 | `kill -TERM` / `kill -INT` | exits 0 after disarming |
 | Low-battery choice | saved to `config.toml` |
+| Watchdog: pipe EOF after `1` | disarms |
+| Watchdog killed | app respawns it next tick |
+| `kill -9` app while armed, close lid | TODO: should sleep (watchdog disarms) |
 
 ## Verifying
 - Trust `pmset -g log` ("Entering Sleep state due to 'Clamshell Sleep'") and
