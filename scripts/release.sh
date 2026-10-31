@@ -27,7 +27,7 @@ trap 'rm -rf "$staging"' EXIT
 cp -R "$app" "$staging/"
 ln -s /Applications "$staging/Applications"
 rm -f "$dmg"
-hdiutil create -volname keepy-uppy -srcfolder "$staging" -format UDZO "$dmg"
+hdiutil create -volname "Keepy Uppy" -srcfolder "$staging" -format UDZO "$dmg"
 codesign --timestamp --sign "$DEVELOPER_ID" "$dmg"
 
 xcrun notarytool submit "$dmg" --keychain-profile "$NOTARY_PROFILE" --wait

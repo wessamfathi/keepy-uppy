@@ -5,7 +5,9 @@
 	<key>CFBundleIdentifier</key>
 	<string>io.github.wessamfathi.keepy-uppy</string>
 	<key>CFBundleName</key>
-	<string>keepy-uppy</string>
+	<string>Keepy Uppy</string>
+	<key>CFBundleDisplayName</key>
+	<string>Keepy Uppy</string>
 	<key>CFBundleExecutable</key>
 	<string>keepy-uppy</string>
 	<key>CFBundlePackageType</key>

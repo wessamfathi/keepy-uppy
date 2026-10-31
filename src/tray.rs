@@ -81,7 +81,7 @@ impl Tray {
         );
         let launch_at_login = CheckMenuItem::new("Launch at login", true, false, None);
         let update = MenuItem::new("", true, None);
-        let quit = MenuItem::new("Quit keepy-uppy", true, None);
+        let quit = MenuItem::new("Quit Keepy Uppy", true, None);
 
         let menu = Menu::new();
         menu.append_items(&[
@@ -104,7 +104,7 @@ impl Tray {
         let icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_icon_templated(icon(false))
-            .with_tooltip("keepy-uppy")
+            .with_tooltip("Keepy Uppy")
             .build()
             .map_err(|e| e.to_string())?;
 
@@ -168,7 +168,7 @@ impl Tray {
             UpdateState::Idle => "Check for updates…".into(),
             UpdateState::Checking => "Checking for updates…".into(),
             UpdateState::UpToDate => "Up to date · check again".into(),
-            UpdateState::Available(tag) => format!("Download keepy-uppy {tag}…"),
+            UpdateState::Available(tag) => format!("Download Keepy Uppy {tag}…"),
             UpdateState::Failed => "Couldn't check for updates · try again".into(),
         });
         self.update.set_enabled(*v.update != UpdateState::Checking);
