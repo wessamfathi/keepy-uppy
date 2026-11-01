@@ -34,4 +34,14 @@ xcrun notarytool submit "$dmg" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$dmg"
 spctl --assess --type open --context context:primary-signature --verbose "$dmg"
 
+sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
+cat >&2 <<EOM
+
+Next:
+  git tag -s v$version -m "Keepy Uppy $version" && git push origin v$version
+  gh release create v$version "$dmg" --verify-tag --title "Keepy Uppy $version"
+  In wessamfathi/homebrew-tap, Casks/keepy-uppy.rb:
+    version "$version"
+    sha256 "$sha"
+EOM
 echo "$dmg"
