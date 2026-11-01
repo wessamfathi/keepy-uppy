@@ -3,8 +3,9 @@
 use std::time::{Duration, Instant};
 
 use tray_icon::menu::{CheckMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu};
-use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
+use tray_icon::{TrayIcon, TrayIconBuilder};
 
+use crate::icons::IconStyle;
 use crate::policy::{Reason, Session};
 use crate::update::UpdateState;
 
@@ -15,6 +16,7 @@ pub enum Action {
     Arm(Option<u64>),
     Disarm,
     LowBattery(Option<u8>),
+    IconStyle(IconStyle),
     ToggleChime,
     ToggleLaunchAtLogin,
     CheckForUpdates,
@@ -30,6 +32,7 @@ pub struct View<'a> {
     pub now: Instant,
     pub last_reason: Reason,
     pub low_battery: Option<u8>,
+    pub icon_style: IconStyle,
     pub chime_muted: bool,
     pub launch_at_login: bool,
     pub update: &'a UpdateState,
@@ -38,13 +41,15 @@ pub struct View<'a> {
 
 pub struct Tray {
     icon: TrayIcon,
-    shown_armed: Option<bool>,
+    /// What the icon currently shows, to skip redundant redraws.
+    shown: Option<(IconStyle, bool)>,
     status: MenuItem,
     indefinite: CheckMenuItem,
     hour1: CheckMenuItem,
     hour4: CheckMenuItem,
     disarm: MenuItem,
     low_battery: Vec<(Option<u8>, CheckMenuItem)>,
+    icon_styles: Vec<(IconStyle, CheckMenuItem)>,
     chime: CheckMenuItem,
     launch_at_login: CheckMenuItem,
     update: MenuItem,
@@ -73,6 +78,14 @@ impl Tray {
         for (_, item) in &low_battery {
             low_battery_menu.append(item).map_err(|e| e.to_string())?;
         }
+        let icon_styles: Vec<_> = IconStyle::ALL
+            .iter()
+            .map(|&s| (s, CheckMenuItem::new(s.label(), true, false, None)))
+            .collect();
+        let icon_menu = Submenu::new("Icon", true);
+        for (_, item) in &icon_styles {
+            icon_menu.append(item).map_err(|e| e.to_string())?;
+        }
         let chime = CheckMenuItem::new(
             "Mute charger chime (keeps awake when plugging in)",
             true,
@@ -95,6 +108,7 @@ impl Tray {
             &low_battery_menu,
             &chime,
             &launch_at_login,
+            &icon_menu,
             &PredefinedMenuItem::separator(),
             &update,
             &quit,
@@ -103,20 +117,20 @@ impl Tray {
 
         let icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
-            .with_icon_templated(icon(false))
             .with_tooltip("Keepy Uppy")
             .build()
             .map_err(|e| e.to_string())?;
 
         Ok(Self {
             icon,
-            shown_armed: None,
+            shown: None,
             status,
             indefinite,
             hour1,
             hour4,
             disarm,
             low_battery,
+            icon_styles,
             chime,
             launch_at_login,
             update,
@@ -146,6 +160,12 @@ impl Tray {
                 .iter()
                 .find(|(_, item)| id == item.id())
                 .map(|&(c, _)| Action::LowBattery(c))
+                .or_else(|| {
+                    self.icon_styles
+                        .iter()
+                        .find(|(_, item)| id == item.id())
+                        .map(|&(s, _)| Action::IconStyle(s))
+                })
         }
     }
 
@@ -173,9 +193,19 @@ impl Tray {
         });
         self.update.set_enabled(*v.update != UpdateState::Checking);
 
-        if self.shown_armed != Some(v.armed) {
-            let _ = self.icon.set_icon_templated(Some(icon(v.armed)));
-            self.shown_armed = Some(v.armed);
+        for (s, item) in &self.icon_styles {
+            item.set_checked(*s == v.icon_style);
+        }
+
+        let wanted = (v.icon_style, v.armed);
+        if self.shown != Some(wanted) {
+            let (icon, template) = v.icon_style.icon(v.armed);
+            let _ = if template {
+                self.icon.set_icon_templated(Some(icon))
+            } else {
+                self.icon.set_icon(Some(icon))
+            };
+            self.shown = Some(wanted);
         }
     }
 }
@@ -207,23 +237,6 @@ fn format_left(d: Duration) -> String {
         (h, 0) => format!("{h}h"),
         (h, m) => format!("{h}h {m}m"),
     }
-}
-
-/// Placeholder template icon: filled circle when armed, ring when off.
-fn icon(armed: bool) -> Icon {
-    const SIZE: u32 = 36; // 18pt at 2x
-    let c = (SIZE as f32 - 1.0) / 2.0;
-    let (outer, inner) = (14.0, if armed { 0.0 } else { 10.0 });
-    let mut rgba = Vec::with_capacity((SIZE * SIZE * 4) as usize);
-    for y in 0..SIZE {
-        for x in 0..SIZE {
-            let r = ((x as f32 - c).powi(2) + (y as f32 - c).powi(2)).sqrt();
-            // 1px anti-aliased edges on both radii.
-            let a = (outer + 0.5 - r).clamp(0.0, 1.0) * (r - inner + 0.5).clamp(0.0, 1.0);
-            rgba.extend_from_slice(&[0, 0, 0, (a * 255.0) as u8]);
-        }
-    }
-    Icon::from_rgba(rgba, SIZE, SIZE).expect("valid icon buffer")
 }
 
 #[cfg(test)]
