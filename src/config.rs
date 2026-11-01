@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::icons::IconStyle;
 use crate::platform;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -14,14 +13,12 @@ pub struct Config {
     /// Disarm on battery at or below this percentage. 0 = never.
     /// (TOML has no null, so `None` is stored as 0.)
     low_battery_pct: u8,
-    pub icon_style: IconStyle,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             low_battery_pct: 10,
-            icon_style: IconStyle::default(),
         }
     }
 }

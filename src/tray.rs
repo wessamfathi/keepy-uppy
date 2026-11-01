@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use tray_icon::menu::{CheckMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu};
 use tray_icon::{TrayIcon, TrayIconBuilder};
 
-use crate::icons::IconStyle;
+use crate::icons;
 use crate::platform;
 use crate::policy::{Reason, Session};
 use crate::update::UpdateState;
@@ -17,7 +17,6 @@ pub enum Action {
     Arm(Option<u64>),
     Disarm,
     LowBattery(Option<u8>),
-    IconStyle(IconStyle),
     ToggleChime,
     ToggleLaunchAtLogin,
     CheckForUpdates,
@@ -33,7 +32,6 @@ pub struct View<'a> {
     pub now: Instant,
     pub last_reason: Reason,
     pub low_battery: Option<u8>,
-    pub icon_style: IconStyle,
     pub chime_muted: bool,
     pub launch_at_login: bool,
     pub update: &'a UpdateState,
@@ -43,14 +41,13 @@ pub struct View<'a> {
 pub struct Tray {
     icon: TrayIcon,
     /// What the icon currently shows, to skip redundant redraws.
-    shown: Option<(IconStyle, bool)>,
+    shown_armed: Option<bool>,
     status: MenuItem,
     indefinite: CheckMenuItem,
     hour1: CheckMenuItem,
     hour4: CheckMenuItem,
     disarm: MenuItem,
     low_battery: Vec<(Option<u8>, CheckMenuItem)>,
-    icon_styles: Vec<(IconStyle, CheckMenuItem)>,
     chime: CheckMenuItem,
     launch_at_login: CheckMenuItem,
     update: MenuItem,
@@ -79,14 +76,6 @@ impl Tray {
         for (_, item) in &low_battery {
             low_battery_menu.append(item).map_err(|e| e.to_string())?;
         }
-        let icon_styles: Vec<_> = IconStyle::ALL
-            .iter()
-            .map(|&s| (s, CheckMenuItem::new(s.label(), true, false, None)))
-            .collect();
-        let icon_menu = Submenu::new("Icon", true);
-        for (_, item) in &icon_styles {
-            icon_menu.append(item).map_err(|e| e.to_string())?;
-        }
         let chime = CheckMenuItem::new(
             "Mute charger chime (keeps awake when plugging in)",
             true,
@@ -109,7 +98,6 @@ impl Tray {
             &low_battery_menu,
             &chime,
             &launch_at_login,
-            &icon_menu,
             &PredefinedMenuItem::separator(),
             &update,
             &quit,
@@ -124,14 +112,13 @@ impl Tray {
 
         Ok(Self {
             icon,
-            shown: None,
+            shown_armed: None,
             status,
             indefinite,
             hour1,
             hour4,
             disarm,
             low_battery,
-            icon_styles,
             chime,
             launch_at_login,
             update,
@@ -161,12 +148,6 @@ impl Tray {
                 .iter()
                 .find(|(_, item)| id == item.id())
                 .map(|&(c, _)| Action::LowBattery(c))
-                .or_else(|| {
-                    self.icon_styles
-                        .iter()
-                        .find(|(_, item)| id == item.id())
-                        .map(|&(s, _)| Action::IconStyle(s))
-                })
         }
     }
 
@@ -194,17 +175,10 @@ impl Tray {
         });
         self.update.set_enabled(*v.update != UpdateState::Checking);
 
-        for (s, item) in &self.icon_styles {
-            item.set_checked(*s == v.icon_style);
-        }
-
-        let wanted = (v.icon_style, v.armed);
-        if self.shown != Some(wanted) {
-            let _ = self
-                .icon
-                .set_icon_templated(Some(v.icon_style.icon(v.armed)));
+        if self.shown_armed != Some(v.armed) {
+            let _ = self.icon.set_icon_templated(Some(icons::icon(v.armed)));
             platform::fit_status_icon(&self.icon);
-            self.shown = Some(wanted);
+            self.shown_armed = Some(v.armed);
         }
     }
 }
