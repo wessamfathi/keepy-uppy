@@ -74,7 +74,13 @@ cargo test                     # policy, config, update and icon tests
 sh scripts/bundle.sh           # build universal "target/release/Keepy Uppy.app" (ad-hoc signed)
 ```
 
-To build a release DMG that is signed with a Developer ID, notarized and stapled:
+Every release gets a new version number. Bump it first (this commits the change):
+
+```sh
+sh scripts/bump-version.sh 0.1.1
+```
+
+Then build the release DMG, which is signed with a Developer ID, notarized and stapled. The script refuses to run if the version in `Cargo.toml` already has a release tag:
 
 ```sh
 DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)" \
