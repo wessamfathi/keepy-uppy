@@ -1,7 +1,6 @@
 //! keepy-uppy: keep a MacBook awake with the lid closed.
 
 mod config;
-mod icons;
 mod platform;
 mod policy;
 mod tray;
@@ -98,12 +97,6 @@ impl App {
                     self.error = Some(e);
                 }
             }
-            Action::IconStyle(style) => {
-                self.config.icon_style = style;
-                if let Err(e) = self.config.save() {
-                    self.error = Some(e);
-                }
-            }
             Action::ToggleChime => {
                 if let Err(e) = platform::set_chime_muted(!self.chime_muted) {
                     self.error = Some(e);
@@ -137,7 +130,6 @@ impl App {
             now,
             last_reason: self.last_reason,
             low_battery: self.config.low_battery(),
-            icon_style: self.config.icon_style,
             chime_muted: self.chime_muted,
             launch_at_login: self.launch_at_login,
             update: &self.update,

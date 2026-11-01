@@ -9,7 +9,6 @@ exclude = ["spike"]
 [dependencies]
 tray-icon = "=0.26.1"
 tao = "=0.37.1"
-png = "=0.18.1"
 serde = { version = "=1.0.229", features = ["derive"] }
 toml = "=1.1.8"
 
