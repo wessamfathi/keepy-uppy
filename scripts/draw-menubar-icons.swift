@@ -1,4 +1,4 @@
-// Draws assets/menubar/keepy-uppy-{on,off}.png. Usage: swift scripts/draw-menubar-icons.swift assets/menubar
+// Draws the Keepy Uppy and Watchful Lid menu bar icons. Usage: swift scripts/draw-menubar-icons.swift assets/menubar
 import AppKit
 
 // 36 px canvas = 18 pt @2x. y grows upward in AppKit.
@@ -73,4 +73,59 @@ render("keepy-uppy-on") {
 render("keepy-uppy-off") {
     ball(center: CGPoint(x: 18, y: 14), radius: 10, filled: false)
     ground()
+}
+
+// Watchful Lid: a laptop lid (trapezoid) over a base bar.
+func lidPath() -> NSBezierPath {
+    let p = NSBezierPath()
+    p.move(to: CGPoint(x: 4, y: 9)); p.line(to: CGPoint(x: 32, y: 9))
+    p.line(to: CGPoint(x: 28, y: 32)); p.line(to: CGPoint(x: 8, y: 32)); p.close()
+    p.lineJoinStyle = .round
+    return p
+}
+
+func base() {
+    NSColor.black.setFill()
+    NSBezierPath(roundedRect: CGRect(x: 1, y: 3, width: 34, height: 3.5), xRadius: 1.75, yRadius: 1.75).fill()
+}
+
+func quad(_ a: CGPoint, _ c: CGPoint, _ b: CGPoint, _ t: CGFloat) -> CGPoint {
+    let u = 1 - t
+    return CGPoint(x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y)
+}
+
+// On: solid lid with a wide-open eye knocked out, solid pupil, highlight.
+render("watchful-lid-on") {
+    base()
+    let lid = lidPath()
+    NSColor.black.setFill(); lid.fill()
+    lid.lineWidth = 2; NSColor.black.setStroke(); lid.stroke()
+    let ctx = NSGraphicsContext.current!
+    let eye = NSBezierPath()
+    eye.move(to: CGPoint(x: 7, y: 20.5))
+    eye.curve(to: CGPoint(x: 29, y: 20.5), controlPoint1: CGPoint(x: 12, y: 29), controlPoint2: CGPoint(x: 24, y: 29))
+    eye.curve(to: CGPoint(x: 7, y: 20.5), controlPoint1: CGPoint(x: 24, y: 12), controlPoint2: CGPoint(x: 12, y: 12))
+    ctx.compositingOperation = .clear; eye.fill()
+    ctx.compositingOperation = .sourceOver
+    NSColor.black.setFill()
+    NSBezierPath(ovalIn: CGRect(x: 18 - 5, y: 20.5 - 5, width: 10, height: 10)).fill()
+    ctx.compositingOperation = .clear
+    NSBezierPath(ovalIn: CGRect(x: 19.2, y: 21.8, width: 2.8, height: 2.8)).fill()
+    ctx.compositingOperation = .sourceOver
+}
+
+// Off: hollow lid with a thick closed eyelid and lashes.
+render("watchful-lid-off") {
+    base()
+    let lid = lidPath()
+    lid.lineWidth = 2.6; NSColor.black.setStroke(); lid.stroke()
+    let a = CGPoint(x: 9, y: 22), c = CGPoint(x: 18, y: 14), b = CGPoint(x: 27, y: 22)
+    let lidLine = NSBezierPath(); lidLine.lineWidth = 2.8; lidLine.lineCapStyle = .round
+    lidLine.move(to: a); lidLine.curve(to: b, controlPoint1: CGPoint(x: 14, y: 16.7), controlPoint2: CGPoint(x: 22, y: 16.7))
+    lidLine.stroke()
+    for (t, dx) in [(0.2, -2.2), (0.5, 0.0), (0.8, 2.2)] {
+        let p = quad(a, c, b, t)
+        let lash = NSBezierPath(); lash.lineWidth = 2.2; lash.lineCapStyle = .round
+        lash.move(to: p); lash.line(to: CGPoint(x: p.x + dx, y: p.y - 4.2)); lash.stroke()
+    }
 }
