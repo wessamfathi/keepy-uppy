@@ -4,11 +4,19 @@ Keepy Uppy keeps a MacBook running with the lid closed. You don't need an extern
 
 Spotify keeps playing and long builds or AI agents keep going while the laptop sits closed. The internal display still turns off as usual. The only thing Keepy Uppy changes is the sleep that normally follows closing the lid.
 
-It's free and open source under GPL-3.0, and runs on Apple Silicon Macs with macOS 14 or later.
+It's free and open source under GPL-3.0, and runs on macOS 14 or later. It's tested on Apple Silicon; the Intel build is included but hasn't been tested on an Intel Mac yet.
 
 ## Install
 
-Download the latest `keepy-uppy-<version>.dmg` from [Releases](https://github.com/wessamfathi/keepy-uppy/releases), open it and drag Keepy Uppy to Applications. The app is signed with a Developer ID and notarized by Apple.
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask wessamfathi/tap/keepy-uppy
+```
+
+Or download the latest `keepy-uppy-<version>.dmg` from [Releases](https://github.com/wessamfathi/keepy-uppy/releases), open it and drag Keepy Uppy to Applications.
+
+The app is a universal build (Apple Silicon and Intel), signed with a Developer ID and notarized by Apple.
 
 Keepy Uppy lives in the menu bar and has no Dock icon. The menu bar icon is a laptop lid with an eye on it. An open eye means the Mac will stay awake when you close the lid; a closed eye means it will sleep normally.
 
@@ -54,16 +62,16 @@ macOS sleeps on lid close unless a kernel flag tells it not to. Keepy Uppy sets 
 
 - It relies on a private macOS interface, which a future macOS release could change or remove.
 - Plugging in an external display while the lid is closed hasn't been tested.
-- Only Apple Silicon builds exist for now.
+- Intel Macs haven't been tested. If you try it on one, please open an issue with what happened.
 
 ## Building from source
 
-You need stable Rust and the Xcode command line tools.
+You need stable Rust with the Intel target (`rustup target add x86_64-apple-darwin`) and the Xcode command line tools.
 
 ```sh
 cargo run                      # run from the terminal
 cargo test                     # policy, config, update and icon tests
-sh scripts/bundle.sh           # build "target/release/Keepy Uppy.app" (ad-hoc signed)
+sh scripts/bundle.sh           # build universal "target/release/Keepy Uppy.app" (ad-hoc signed)
 ```
 
 To build a release DMG that is signed with a Developer ID, notarized and stapled:
