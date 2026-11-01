@@ -103,6 +103,10 @@ The icons are drawn in code. `scripts/draw-menubar-icons.swift` draws the menu b
 | `src/main.rs` | Event loop and 1 s tick |
 | `spike/` | The original proof-of-concept CLI (`arm`, `disarm`, `hold`) |
 
+## Inspiration
+
+Keepy Uppy is heavily influenced by [Clamshell](https://clamshell.dev) and the macOS [`caffeinate`](https://ss64.com/mac/caffeinate.html) command. I built it for myself and made it free and open source, so anyone can use it and change it.
+
 ## License
 
 [GPL-3.0](LICENSE). If you distribute a modified version, you have to release its source under the same license.
