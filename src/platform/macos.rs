@@ -10,10 +10,13 @@ use core_foundation::base::{CFType, CFTypeRef, TCFType};
 use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
 use core_foundation::number::CFNumber;
 use core_foundation::string::{CFString, CFStringRef};
-use objc2_foundation::{NSProcessInfo, NSProcessInfoThermalState};
+use objc2::MainThreadMarker;
+use objc2_foundation::{NSProcessInfo, NSProcessInfoThermalState, NSSize};
 use objc2_service_management::{SMAppService, SMAppServiceStatus};
 
 use super::SleepController;
+use tray_icon::TrayIcon;
+
 use crate::policy::{Power, Thermal};
 
 type KernReturn = i32;
@@ -181,6 +184,21 @@ pub fn power() -> Power {
             }
         }
         Power { on_ac, battery_pct }
+    }
+}
+
+/// Menu bar icons are 18 pt. tray-icon sizes the image to its pixel size
+/// (capped at 22 pt), which would stretch a 36 px retina image to 22 pt.
+pub fn fit_status_icon(tray: &TrayIcon) {
+    let Some(mtm) = MainThreadMarker::new() else {
+        return;
+    };
+    let Some(button) = tray.ns_status_item().and_then(|item| item.button(mtm)) else {
+        return;
+    };
+    if let Some(image) = button.image() {
+        image.setSize(NSSize::new(18.0, 18.0));
+        button.setImage(Some(&image));
     }
 }
 

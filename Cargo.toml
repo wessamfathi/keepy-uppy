@@ -9,10 +9,13 @@ exclude = ["spike"]
 [dependencies]
 tray-icon = "=0.26.1"
 tao = "=0.37.1"
+png = "=0.18.1"
 serde = { version = "=1.0.229", features = ["derive"] }
 toml = "=1.1.8"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "=0.10.1"
-objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSError", "NSProcessInfo", "NSString"] }
+objc2 = "=0.6.5"
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSButton", "NSControl", "NSImage", "NSResponder", "NSStatusBarButton", "NSStatusItem", "NSView"] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSError", "NSGeometry", "NSProcessInfo", "NSString"] }
 objc2-service-management = { version = "=0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }

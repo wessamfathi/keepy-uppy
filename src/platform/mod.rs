@@ -8,8 +8,8 @@ mod macos;
 
 #[cfg(target_os = "macos")]
 pub use macos::{
-    chime_muted, config_dir, install_stop_signals, launch_at_login, open_url, power,
-    set_chime_muted, set_launch_at_login, stop_requested, thermal,
+    chime_muted, config_dir, fit_status_icon, install_stop_signals, launch_at_login, open_url,
+    power, set_chime_muted, set_launch_at_login, stop_requested, thermal,
     ClamshellController as Controller,
 };
 

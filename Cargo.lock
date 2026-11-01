@@ -805,8 +805,11 @@ name = "keepy-uppy"
 version = "0.1.0"
 dependencies = [
  "core-foundation",
+ "objc2",
+ "objc2-app-kit",
  "objc2-foundation",
  "objc2-service-management",
+ "png",
  "serde",
  "tao",
  "toml 1.1.8+spec-1.1.0",
