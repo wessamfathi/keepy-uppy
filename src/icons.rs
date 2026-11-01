@@ -5,7 +5,7 @@ use std::io::Cursor;
 
 use tray_icon::Icon;
 
-/// Open eye on a solid lid when armed, closed eye on an outlined lid when off.
+/// Outlined lid in both states: open eye when armed, closed eye when off.
 pub fn icon(armed: bool) -> Icon {
     decode(if armed {
         include_bytes!("../assets/menubar/watchful-lid-on.png")

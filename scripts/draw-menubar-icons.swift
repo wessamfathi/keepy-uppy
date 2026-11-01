@@ -34,27 +34,35 @@ func quad(_ a: CGPoint, _ c: CGPoint, _ b: CGPoint, _ t: CGFloat) -> CGPoint {
     return CGPoint(x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y)
 }
 
-// On: solid lid with a wide-open eye knocked out, solid pupil, highlight.
+func cubic(_ a: CGPoint, _ c1: CGPoint, _ c2: CGPoint, _ b: CGPoint, _ t: CGFloat) -> CGPoint {
+    let u = 1 - t
+    let x = u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * b.x
+    let y = u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * b.y
+    return CGPoint(x: x, y: y)
+}
+
+// On: hollow lid (same as off) with an open eye, solid pupil and upward lashes.
 render("watchful-lid-on") {
     base()
     let lid = lidPath()
-    NSColor.black.setFill(); lid.fill()
-    lid.lineWidth = 2; NSColor.black.setStroke(); lid.stroke()
-    let ctx = NSGraphicsContext.current!
-    let eye = NSBezierPath()
-    eye.move(to: CGPoint(x: 7, y: 20.5))
-    eye.curve(to: CGPoint(x: 29, y: 20.5), controlPoint1: CGPoint(x: 12, y: 29), controlPoint2: CGPoint(x: 24, y: 29))
-    eye.curve(to: CGPoint(x: 7, y: 20.5), controlPoint1: CGPoint(x: 24, y: 12), controlPoint2: CGPoint(x: 12, y: 12))
-    ctx.compositingOperation = .clear; eye.fill()
-    ctx.compositingOperation = .sourceOver
+    lid.lineWidth = 2.6; NSColor.black.setStroke(); lid.stroke()
+    let l = CGPoint(x: 8.5, y: 19), r = CGPoint(x: 27.5, y: 19)
+    let up1 = CGPoint(x: 13, y: 25.5), up2 = CGPoint(x: 23, y: 25.5)
+    let eye = NSBezierPath(); eye.lineWidth = 2.4; eye.lineJoinStyle = .round
+    eye.move(to: l)
+    eye.curve(to: r, controlPoint1: up1, controlPoint2: up2)
+    eye.curve(to: l, controlPoint1: CGPoint(x: 23, y: 12.5), controlPoint2: CGPoint(x: 13, y: 12.5))
+    eye.stroke()
     NSColor.black.setFill()
-    NSBezierPath(ovalIn: CGRect(x: 18 - 5, y: 20.5 - 5, width: 10, height: 10)).fill()
-    ctx.compositingOperation = .clear
-    NSBezierPath(ovalIn: CGRect(x: 19.2, y: 21.8, width: 2.8, height: 2.8)).fill()
-    ctx.compositingOperation = .sourceOver
+    NSBezierPath(ovalIn: CGRect(x: 18 - 4.2, y: 19 - 4.2, width: 8.4, height: 8.4)).fill()
+    for (t, dx) in [(0.25, -1.6), (0.5, 0.0), (0.75, 1.6)] {
+        let p = cubic(l, up1, up2, r, t)
+        let lash = NSBezierPath(); lash.lineWidth = 2.2; lash.lineCapStyle = .round
+        lash.move(to: p); lash.line(to: CGPoint(x: p.x + dx, y: p.y + 3.2)); lash.stroke()
+    }
 }
 
-// Off: hollow lid with a thick closed eyelid and lashes.
+// Off: hollow lid with a thick closed eyelid and downward lashes.
 render("watchful-lid-off") {
     base()
     let lid = lidPath()
