@@ -11,6 +11,7 @@ use tray_icon::Icon;
 pub enum IconStyle {
     #[default]
     KeepyUppy,
+    WatchfulLid,
     PocketSun,
     SunMoon,
     /// Ring when off, filled circle when armed.
@@ -18,8 +19,9 @@ pub enum IconStyle {
 }
 
 impl IconStyle {
-    pub const ALL: [IconStyle; 4] = [
+    pub const ALL: [IconStyle; 5] = [
         IconStyle::KeepyUppy,
+        IconStyle::WatchfulLid,
         IconStyle::PocketSun,
         IconStyle::SunMoon,
         IconStyle::Plain,
@@ -28,6 +30,7 @@ impl IconStyle {
     pub fn label(self) -> &'static str {
         match self {
             IconStyle::KeepyUppy => "Keepy Uppy",
+            IconStyle::WatchfulLid => "Watchful Lid",
             IconStyle::PocketSun => "Pocket Sun",
             IconStyle::SunMoon => "Sun and Moon",
             IconStyle::Plain => "Plain",
@@ -40,6 +43,12 @@ impl IconStyle {
             (IconStyle::Plain, _) => return plain(armed),
             (IconStyle::KeepyUppy, true) => include_bytes!("../assets/menubar/keepy-uppy-on.png"),
             (IconStyle::KeepyUppy, false) => include_bytes!("../assets/menubar/keepy-uppy-off.png"),
+            (IconStyle::WatchfulLid, true) => {
+                include_bytes!("../assets/menubar/watchful-lid-on.png")
+            }
+            (IconStyle::WatchfulLid, false) => {
+                include_bytes!("../assets/menubar/watchful-lid-off.png")
+            }
             (IconStyle::PocketSun | IconStyle::SunMoon, true) => {
                 include_bytes!("../assets/menubar/pocket-sun-on.png")
             }
